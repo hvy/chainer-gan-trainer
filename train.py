@@ -1,10 +1,15 @@
 import argparse
 from chainer import datasets, training, iterators, optimizers
-from chainer.training import extensions
+from chainer.training import updater, extensions
+from iterators import RandomNoiseIterator, UniformNoiseGenerator
 from models import Generator, Discriminator
 from updaters import GenerativeAdversarialUpdater
-from iterators import RandomNoiseIterator, UniformNoiseGenerator
-from extensions import sample_ims
+from extensions import GeneratorSample
+
+
+iterators.RandomNoiseIterator = RandomNoiseIterator
+updater.GenerativeAdversarialUpdater = GenerativeAdversarialUpdater
+extensions.GeneratorSample = GeneratorSample
 
 
 def parse_args():
@@ -25,7 +30,7 @@ if __name__ == '__main__':
 
     train, _ = datasets.get_mnist(withlabel=False, ndim=3)
     train_iter = iterators.SerialIterator(train, batch_size)
-    z_iter = RandomNoiseIterator(UniformNoiseGenerator(-1, 1, nz), batch_size)
+    z_iter = iterators.RandomNoiseIterator(UniformNoiseGenerator(-1, 1, nz), batch_size)
 
     optimizer_generator = optimizers.Adam(alpha=1e-3, beta1=0.5)
     optimizer_discriminator = optimizers.Adam(alpha=2e-4, beta1=0.5)
@@ -33,7 +38,7 @@ if __name__ == '__main__':
     optimizer_generator.setup(Generator(nz))
     optimizer_discriminator.setup(Discriminator(train.shape[2:]))
 
-    updater = GenerativeAdversarialUpdater(
+    updater = updater.GenerativeAdversarialUpdater(
         iterator=train_iter,
         noise_iterator=z_iter,
         optimizer_generator=optimizer_generator,
@@ -44,5 +49,5 @@ if __name__ == '__main__':
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(['epoch', 'gen/loss', 'dis/loss']))
     trainer.extend(extensions.ProgressBar())
-    trainer.extend(sample_ims)
+    trainer.extend(GeneratorSample(trigger=(1, 'epoch')))
     trainer.run()

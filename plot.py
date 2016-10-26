@@ -4,15 +4,20 @@ from matplotlib import pyplot as plt
 import math
 
 
-def savefig(ims, filename, dpi=100):
-    n, w, h = ims.shape
+def save_ims(filename, ims, dpi=100):
+    n, c, w, h = ims.shape
     x_plots = math.ceil(math.sqrt(n))
     y_plots = x_plots if n % x_plots == 0 else x_plots - 1
     plt.figure(figsize=(w*x_plots/dpi, h*y_plots/dpi), dpi=dpi)
 
     for i, im in enumerate(ims):
         plt.subplot(y_plots, x_plots, i+1)
-        plt.imshow(im)
+
+        if c == 1:
+            plt.imshow(im[0])
+        else:
+            raise NotImplementedError
+
         plt.axis('off')
         plt.gca().set_xticks([])
         plt.gca().set_yticks([])
