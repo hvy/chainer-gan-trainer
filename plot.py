@@ -8,7 +8,7 @@ def savefig(ims, filename, dpi=100):
     n, w, h = ims.shape
     x_plots = math.ceil(math.sqrt(n))
     y_plots = x_plots if n % x_plots == 0 else x_plots - 1
-    fig = plt.figure(figsize=(w*x_plots/dpi, h*y_plots/dpi), dpi=dpi)
+    plt.figure(figsize=(w*x_plots/dpi, h*y_plots/dpi), dpi=dpi)
 
     for i, im in enumerate(ims):
         plt.subplot(y_plots, x_plots, i+1)

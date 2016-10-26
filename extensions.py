@@ -1,4 +1,4 @@
-from chainer import  training, cuda
+from chainer import training, cuda
 from plot import savefig
 
 
