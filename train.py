@@ -3,7 +3,7 @@ from chainer import datasets, training, iterators, optimizers
 from chainer.training import updater, extensions
 from iterators import RandomNoiseIterator, UniformNoiseGenerator
 from models import Generator, Discriminator
-from updaters import GenerativeAdversarialUpdater
+from updater import GenerativeAdversarialUpdater
 from extensions import GeneratorSample
 
 
