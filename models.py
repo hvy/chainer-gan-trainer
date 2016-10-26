@@ -45,8 +45,7 @@ class Generator(Chain):
             bn0=L.BatchNormalization(1024),
             bn1=L.BatchNormalization(128),
             bn2=L.BatchNormalization(64),
-            bn3=L.BatchNormalization(32)
-        )
+            bn3=L.BatchNormalization(32))
 
     def __call__(self, z, test=False):
         h = F.relu(self.bn0(self.fc0(z), test=test))
@@ -71,8 +70,7 @@ class Discriminator(Chain):
             fc6=L.Linear(512+32, 2),
             bn1=L.BatchNormalization(64),
             bn2=L.BatchNormalization(128),
-            bn3=L.BatchNormalization(256)
-        )
+            bn3=L.BatchNormalization(256))
 
     def __call__(self, x, minibatch_discrimination=True, test=False):
         h = F.leaky_relu(self.c0(x))

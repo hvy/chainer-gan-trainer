@@ -23,22 +23,19 @@ if __name__ == '__main__':
     epochs = args.epochs
     gpu = args.gpu
 
-
     # Training data
     train, _ = datasets.get_mnist(withlabel=False, ndim=3)
     train_iter = iterators.SerialIterator(train, batch_size, repeat=True,
                                           shuffle=True)
     z_iter = RandomNoiseIterator(UniformNoiseGenerator(-1, 1, nz), batch_size)
-    generator = Generator(nz)
-    discriminator = Discriminator(train.shape[2:])
     optimizer_generator = optimizers.Adam(alpha=1e-3, beta1=0.5)
+    optimizer_generator.setup(Generator(nz))
     optimizer_discriminator = optimizers.Adam(alpha=2e-4, beta1=0.5)
+    optimizer_discriminator.setup(Discriminator(train.shape[2:]))
 
     updater = GenerativeAdversarialUpdater(
         iterator=train_iter,
         noise_iterator=z_iter,
-        generator=generator,
-        discriminator=discriminator,
         optimizer_generator=optimizer_generator,
         optimizer_discriminator=optimizer_discriminator,
         device=gpu)

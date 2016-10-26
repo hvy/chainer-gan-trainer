@@ -7,33 +7,27 @@ from chainer import Variable
 
 class GenerativeAdversarialUpdater(training.StandardUpdater):
     def __init__(self, *, iterator, noise_iterator, optimizer_generator,
-                 optimizer_discriminator, generator, discriminator,
-                 converter=None, device=-1):
+                 optimizer_discriminator, converter=None, device=-1):
 
         iterators = {'main': iterator, 'z': noise_iterator}
-        models = {'gen': generator, 'dis': discriminator}
         optimizers = {'gen': optimizer_generator,
                       'dis': optimizer_discriminator}
 
         super().__init__(iterators, optimizers, device=device)
 
-        for name, optimizer in optimizers.items():
-            optimizer.setup(models[name])
-
         if device >= 0:
             chainer.cuda.get_device(device).use()
-            [model.to_gpu() for model in models.values()]
+            [optimizer.target.to_gpu() for optimizer in optimizers.values()]
 
-        self._models = models
         self.xp = chainer.cuda.cupy if device >= 0 else np
 
     @property
     def generator(self):
-        return self._models['gen']
+        return self._optimizers['gen'].target
 
     @property
     def discriminator(self):
-        return self._models['dis']
+        return self._optimizers['dis'].target
 
     def forward(self):
         z = self._iterators['z'].next()
@@ -49,7 +43,9 @@ class GenerativeAdversarialUpdater(training.StandardUpdater):
 
         return y_fake, y_real
 
-    def backward(self, y_fake, y_real):
+    def backward(self, y):
+        y_fake, y_real = y
+
         generator_loss = F.softmax_cross_entropy(
             y_fake,
             Variable(self.xp.ones(y_fake.shape[0], dtype=self.xp.int32)))
@@ -78,5 +74,5 @@ class GenerativeAdversarialUpdater(training.StandardUpdater):
         if self.is_new_epoch:
             pass
 
-        losses = self.backward(*self.forward())
+        losses = self.backward(self.forward())
         self.update_params(losses, report=True)
