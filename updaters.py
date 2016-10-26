@@ -13,7 +13,8 @@ class GenerativeAdversarialUpdater(training.StandardUpdater):
         optimizers = {'gen': optimizer_generator,
                       'dis': optimizer_discriminator}
 
-        super().__init__(iterators, optimizers, device=device)
+        super().__init__(iterators, optimizers, converter=converter,
+                         device=device)
 
         if device >= 0:
             chainer.cuda.get_device(device).use()
