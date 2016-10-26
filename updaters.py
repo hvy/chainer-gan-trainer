@@ -1,11 +1,20 @@
 import numpy as np
 import chainer
-from chainer import training
+from chainer import training, reporter
 from chainer import functions as F
+from chainer import Variable
 
 
 class GenerativeAdversarialUpdater(training.StandardUpdater):
-    def __init__(self, iterators, optimizers, models, converter=None, device=-1):
+    def __init__(self, *, iterator, noise_iterator, optimizer_generator,
+                 optimizer_discriminator, generator, discriminator,
+                 converter=None, device=-1):
+
+        iterators = {'main': iterator, 'z': noise_iterator}
+        models = {'gen': generator, 'dis': discriminator}
+        optimizers = {'gen': optimizer_generator,
+                      'dis': optimizer_discriminator}
+
         super().__init__(iterators, optimizers, device=device)
 
         for name, optimizer in optimizers.items():
@@ -16,73 +25,58 @@ class GenerativeAdversarialUpdater(training.StandardUpdater):
             [model.to_gpu() for model in models.values()]
 
         self._models = models
-
         self.xp = chainer.cuda.cupy if device >= 0 else np
-
-        self.loss_generator = 0
-        self.loss_discriminator = 0
 
     @property
     def generator(self):
-        return self._models['G']
+        return self._models['gen']
 
     @property
     def discriminator(self):
-        return self._models['D']
+        return self._models['dis']
 
-    @property
-    def optimizer_generator(self):
-        return self._optimizers['G']
+    def forward(self):
+        z = self._iterators['z'].next()
+        z = self.converter(z, self.device)
 
-    @property
-    def optimizer_discriminator(self):
-        return self._optimizers['D']
-
-
-    def update_core(self):
-        if self.is_new_epoch:
-            print('New epoch!')
-            self.loss_generator = 0
-            self.loss_discriminator = 0
-        else:
-            print('hm, ok!')
-
-        batch = self._iterators['noise'].next()
-        in_arrays = self.converter(batch, self.device)
-
-        print('noise shape')
-        print(in_arrays.shape)
-
-        # TODO: wrap in Variable if necessary
-        x_fake = self.generator(in_arrays)
+        x_fake = self.generator(Variable(z))
         y_fake = self.discriminator(x_fake)
 
-        print('generated shape')
-        print(x_fake.shape)
-        print('y_fake shape')
-        print(y_fake.shape)
+        x_real = self._iterators['main'].next()
+        x_real = self.converter(x_real, self.device)
 
-        batch = self._iterators['main'].next()
-        in_arrays = self.converter(batch, self.device)
-        print('real data shape')
-        print(in_arrays.shape)
-        y_real = self.discriminator(in_arrays)
+        y_real = self.discriminator(Variable(x_real))
 
-        print('y_real shape')
-        print(y_real.shape)
+        return y_fake, y_real
 
-        generator_loss = F.softmax_cross_entropy(y_fake, self.xp.ones(y_fake.shape[0], dtype=self.xp.int32))
-        discriminator_loss = F.softmax_cross_entropy(y_fake, self.xp.zeros(y_fake.shape[0], dtype=self.xp.int32))
-        discriminator_loss += F.softmax_cross_entropy(y_real, self.xp.ones(y_real.shape[0], dtype=self.xp.int32))
+    def backward(self, y_fake, y_real):
+        generator_loss = F.softmax_cross_entropy(
+            y_fake,
+            Variable(self.xp.ones(y_fake.shape[0], dtype=self.xp.int32)))
+        discriminator_loss = F.softmax_cross_entropy(
+            y_fake,
+            Variable(self.xp.zeros(y_fake.shape[0], dtype=self.xp.int32)))
+        discriminator_loss += F.softmax_cross_entropy(
+            y_real,
+            Variable(self.xp.ones(y_real.shape[0], dtype=self.xp.int32)))
         discriminator_loss /= 2
 
+        return {'gen': generator_loss, 'dis': discriminator_loss}
+
+    def update_params(self, losses, report=True):
         for optimizer in self._optimizers.values():
             optimizer.target.cleargrads()
 
-        discriminator_loss.backward()
-        print(self._optimizers['D'])
-        print(self._optimizers['D'].beta1)
-        self._optimizers['D'].update()
+        for name, loss in losses.items():
+            if report:
+                reporter.report({'{}/loss'.format(name): loss})
 
-        generator_loss.backward()
-        self._optimizers['G'].update()
+            loss.backward()
+            self._optimizers[name].update()
+
+    def update_core(self):
+        if self.is_new_epoch:
+            pass
+
+        losses = self.backward(*self.forward())
+        self.update_params(losses, report=True)

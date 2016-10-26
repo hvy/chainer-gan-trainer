@@ -1,12 +1,11 @@
 import numpy
-from chainer.dataset.iterator import Iterator
+from chainer.dataset import iterator
 
 
 def to_tuple(x):
-    if isinstance(x, (tuple, list)):
+    if hasattr(x, '__getitem__'):
         return x
-    else:
-        return x,
+    return x,
 
 
 class UniformNoiseGenerator(object):
@@ -16,8 +15,8 @@ class UniformNoiseGenerator(object):
         self.size = to_tuple(size)
 
     def __call__(self, batch_size):
-        return numpy.random.uniform(self.low, self.high,
-                                      (batch_size,) +  self.size)
+        return numpy.random.uniform(self.low, self.high, (batch_size,) +
+                                    self.size).astype(numpy.float32)
 
 
 class GaussianNoiseGenerator(object):
@@ -27,18 +26,15 @@ class GaussianNoiseGenerator(object):
         self.size = to_tuple(size)
 
     def __call__(self, batch_size):
-        return numpy.random.normal(self.loc, self.scale,
-                                     (batch_size,) + self.size)
+        return numpy.random.normal(self.loc, self.scale, (batch_size,) +
+                                   self.size).astype(numpy.float32)
 
 
-class RandomNoiseIterator(Iterator):
+class RandomNoiseIterator(iterator.Iterator):
     def __init__(self, noise_generator, batch_size):
-        self.batch_size = batch_size
         self.noise_generator = noise_generator
+        self.batch_size = batch_size
 
     def __next__(self):
         batch = self.noise_generator(self.batch_size)
-        batch = batch.astype(numpy.float32)
-        print('RandomNoiseIterator')
-        print(batch.shape)
         return batch
