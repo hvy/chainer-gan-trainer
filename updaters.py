@@ -7,14 +7,13 @@ from chainer import Variable
 
 class GenerativeAdversarialUpdater(training.StandardUpdater):
     def __init__(self, *, iterator, noise_iterator, optimizer_generator,
-                 optimizer_discriminator, converter=None, device=-1):
+                 optimizer_discriminator, device=-1):
 
         iterators = {'main': iterator, 'z': noise_iterator}
         optimizers = {'gen': optimizer_generator,
                       'dis': optimizer_discriminator}
 
-        super().__init__(iterators, optimizers, converter=converter,
-                         device=device)
+        super().__init__(iterators, optimizers, device=device)
 
         if device >= 0:
             chainer.cuda.get_device(device).use()
@@ -30,19 +29,22 @@ class GenerativeAdversarialUpdater(training.StandardUpdater):
     def discriminator(self):
         return self._optimizers['dis'].target
 
-    def forward(self):
-        z = self._iterators['z'].next()
-        z = self.converter(z, self.device)
+    def forward(self, test=False):
+        z_it = self._iterators['z'].next()
+        z = self.converter(z_it, self.device)
 
-        x_fake = self.generator(Variable(z))
-        y_fake = self.discriminator(x_fake)
+        x_fake = self.generator(Variable(z), test=test)
+        y_fake = self.discriminator(x_fake, test=test)
 
-        x_real = self._iterators['main'].next()
-        x_real = self.converter(x_real, self.device)
+        x_real_it = self._iterators['main'].next()
+        x_real = self.converter(x_real_it, self.device)
 
         y_real = self.discriminator(Variable(x_real))
 
-        return y_fake, y_real
+        if test:
+            return x_fake
+        else:
+            return y_fake, y_real
 
     def backward(self, y):
         y_fake, y_real = y
