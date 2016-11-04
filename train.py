@@ -49,5 +49,5 @@ if __name__ == '__main__':
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(['epoch', 'gen/loss', 'dis/loss']))
     trainer.extend(extensions.ProgressBar())
-    trainer.extend(extensions.GeneratorSample(trigger=(1, 'epoch')))
+    trainer.extend(extensions.GeneratorSample(), trigger=(1, 'epoch'))
     trainer.run()
