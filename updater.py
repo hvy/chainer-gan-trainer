@@ -63,13 +63,11 @@ class GenerativeAdversarialUpdater(training.StandardUpdater):
         return {'gen': generator_loss, 'dis': discriminator_loss}
 
     def update_params(self, losses, report=True):
-        for optimizer in self._optimizers.values():
-            optimizer.target.cleargrads()
-
         for name, loss in losses.items():
             if report:
                 reporter.report({'{}/loss'.format(name): loss})
 
+            self._optimizers[name].target.cleargrads()
             loss.backward()
             self._optimizers[name].update()
 
