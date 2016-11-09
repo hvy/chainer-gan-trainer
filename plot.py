@@ -16,7 +16,7 @@ def save_ims(filename, ims, dpi=100):
         if c == 1:
             plt.imshow(im[0])
         else:
-            raise NotImplementedError
+            plt.imshow(im.transpose((1, 2, 0)))
 
         plt.axis('off')
         plt.gca().set_xticks([])
